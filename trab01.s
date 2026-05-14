@@ -4,8 +4,9 @@
 	msg0: .asciz "Digite o primeiro numero: \n"
 	msg1: .asciz "Digite o segundo numero: \n"
 	msg2: .asciz "Digite a operação: \n"
-	fmt_in: .asciz "%lld"
+	fmt_in: .asciz "%d"
 	fmt_out: .asciz "Resultado: %d\n"
+	fmt_char: .asciz " %c"
 
 .bss 
 	.lcomm num1, 4 # alocacao de 4 bytes para int ou float p/ primeiro numero
@@ -32,13 +33,14 @@ main:
 	call printf
 	
 	mov $fmt_in, %rdi
-	mov $operador, %esi
+	mov $operador, %rsi
 	xor %eax, %eax
 	call scanf
 
 	# Logica if-else para definir qual a operacao 
 
-	mov operador, %al
+	movb operador, %al
+
 	cmp $'+', %al
 	je soma
 
@@ -76,21 +78,32 @@ main:
 	je prox_primo
 
 ler_numero:
-	mov $msg1, %rdi
-        call printf
+    push %rbp            
+    mov %rsp, %rbp
 
-        mov $fmt_in, %rdi
-        mov $num2, %esi
-        call scanf
+    mov $msg1, %rdi
+    xor %eax, %eax
+    call printf
 
-	mov num1, %eax
-	ret
+    mov $fmt_in, %rdi
+    mov $num2, %rsi
+    xor %eax, %eax
+    call scanf
+
+    pop %rbp
+    ret
 
 imprime:
-	mov $fmt_out, %rdi
-	mov %eax, %esi
-	xor %eax, %eax
-	call printf
+    push %rbp
+    mov %rsp, %rbp
+
+    mov $fmt_out, %rdi
+    mov %eax, %esi       
+    xor %eax, %eax
+    call printf
+
+    pop %rbp
+    ret
 
 finaliza:
 	xor %eax, %eax
@@ -123,21 +136,28 @@ divisao:
 
 exponenciacao:
 	call ler_numero
-	mov num1, temp
-	jmp exp_while
+    mov num1, %eax
+
+	mov %eax, temp
+
+
+	jmp exp_check
 
 exp_while:
-	mov $num1, %eax
-	mov $temp, %esi
-	mul temp
-	
-	sub $1, num2
-	mov num2, %eax
-	cmp $0, %eax
-	jg exp_while
-	je fim_exp
+	mov temp, %eax
+    mov num1, %ecx
+    imull %ecx, %eax
+    mov %eax, temp
+    subl $1, num2
+
+exp_check:
+    mov num2, %eax
+    cmp $1, %eax
+    jg exp_while
+
 
 fim_exp:
+    mov temp, %eax
 	call imprime
 	jmp finaliza
 
@@ -146,7 +166,20 @@ combinacao:
 arranjo:
 
 fatorial:
+	mov $1, %eax
+	cmp $1, %edi
+	jle fim_fatorial
 
+fat_loop:
+	imull %edi, %eax
+	subl $1, %edi
+	cmp $1, %edi
+	jg fat_loop
+
+fim_fatorial:
+	call imprime
+	jmp finaliza
+	
 inverso:
 
 raiz:
