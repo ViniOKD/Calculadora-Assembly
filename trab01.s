@@ -24,7 +24,7 @@ main:
 	call printf
 
 	mov $fmt_in, %rdi
-	mov $num1, %esi
+	mov $num1, %rsi
 	xor %eax, %eax
 	call scanf
 
@@ -32,7 +32,7 @@ main:
 	xor %eax, %eax
 	call printf
 	
-	mov $fmt_in, %rdi
+	mov $fmt_char, %rdi
 	mov $operador, %rsi
 	xor %eax, %eax
 	call scanf
@@ -77,16 +77,15 @@ main:
 	cmp $'p', %al
 	je prox_primo
 
-ler_numero:
-    push %rbp            
-    mov %rsp, %rbp
-
+ler_numero:    
+	push %rbp
+	mov %rsp, %rbp
     mov $msg1, %rdi
     xor %eax, %eax
     call printf
 
     mov $fmt_in, %rdi
-    mov $num2, %rsi
+    mov $num2, %esi
     xor %eax, %eax
     call scanf
 
@@ -126,13 +125,15 @@ subtracao:
 
 multiplicacao:
 	call ler_numero
-	mul num2
+	mov num1, %eax
+	imull num2, %eax
 	call imprime
 	jmp finaliza
 
 divisao:
 	call ler_numero
-	div num2
+	mov num1, %eax
+	idivl num2 
 	call imprime
 	jmp finaliza
 
@@ -176,7 +177,7 @@ arranjo:
 	call fatorial_calc
 	mov %eax, %ebx 
 	mov temp, %eax
-	div %ebx
+	idivl %ebx
 	call imprime 
 	jmp finaliza
 
@@ -212,9 +213,3 @@ logaritmo:
 
 prox_primo:
 	jmp finaliza
-
-
-
-
-
-
