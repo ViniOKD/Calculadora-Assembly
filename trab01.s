@@ -112,12 +112,14 @@ finaliza:
 
 soma:
 	call ler_numero
+	mov num1, %eax
 	add num2, %eax
 	call imprime
 	jmp finaliza
 
 subtracao:
 	call ler_numero
+	mov num1, %eax
 	sub num2, %eax
 	call imprime
 	jmp finaliza
@@ -162,13 +164,33 @@ fim_exp:
 	jmp finaliza
 
 combinacao:
+	jmp finaliza
 
 arranjo:
+	call ler_numero
+	mov num1, %edi
+	call fatorial_calc
+	mov %eax, temp
+	mov num1, %edi
+	sub num2, %edi
+	call fatorial_calc
+	mov %eax, %ebx 
+	mov temp, %eax
+	div %ebx
+	call imprime 
+	jmp finaliza
 
-fatorial:
+
+fatorial: 
+	mov num1, %edi
+	call fatorial_calc 
+	call imprime
+	jmp finaliza 
+
+fatorial_calc:
 	mov $1, %eax
 	cmp $1, %edi
-	jle fim_fatorial
+	jle fim_fat_calc
 
 fat_loop:
 	imull %edi, %eax
@@ -176,17 +198,20 @@ fat_loop:
 	cmp $1, %edi
 	jg fat_loop
 
-fim_fatorial:
-	call imprime
-	jmp finaliza
+fim_fat_calc:
+	ret
 	
 inverso:
+	jmp finaliza
 
 raiz:
+	jmp finaliza
 
 logaritmo:
+	jmp finaliza
 
 prox_primo:
+	jmp finaliza
 
 
 
