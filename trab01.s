@@ -7,18 +7,19 @@
 	fmt_in: .asciz "%d"
 	fmt_out: .asciz "Resultado: %d\n"
 	fmt_char: .asciz " %c"
-
+	msg_continue: .asciz "Deseja continuar?: (s/n) \n"
 .bss 
 	.lcomm num1, 4 # alocacao de 4 bytes para int ou float p/ primeiro numero
 	.lcomm num2, 4 # alocacao de 4 bytes para int ou float p/ segundo numero
 	.lcomm operador, 1 # aloca 1 byte p/ operador
 	.lcomm temp, 4 # variavel temporaria
-
+	.lcomm continuar, 1 # controla o loop
 .section .text
 main:
 	push %rbp
 	mov %rsp, %rbp
 
+inicio:
 	mov $msg0, %rdi
 	xor %eax, %eax
 	call printf
@@ -104,6 +105,30 @@ imprime:
     pop %rbp
     ret
 
+loop_prog:
+	push %rbp
+	mov %rsp, %rbp
+
+	mov $msg_continue, %rdi
+	xor %eax, %eax
+	call printf
+
+	mov $fmt_char, %rdi
+	mov $continuar, %rsi
+	xor %eax, %eax
+	call scanf
+
+	movb continuar, %al 
+
+	cmp $'s', %al
+	je inicio
+
+	cmp $'S', %al
+	je inicio
+
+	pop %rbp
+	ret
+
 finaliza:
 	xor %eax, %eax
 	pop %rbp
@@ -114,6 +139,7 @@ soma:
 	mov num1, %eax
 	add num2, %eax
 	call imprime
+	call loop_prog
 	jmp finaliza
 
 subtracao:
@@ -121,6 +147,7 @@ subtracao:
 	mov num1, %eax
 	sub num2, %eax
 	call imprime
+	call loop_prog
 	jmp finaliza
 
 multiplicacao:
@@ -128,6 +155,7 @@ multiplicacao:
 	mov num1, %eax
 	imull num2, %eax
 	call imprime
+	call loop_prog
 	jmp finaliza
 
 divisao:
@@ -135,16 +163,16 @@ divisao:
 	mov num1, %eax
 	idivl num2 
 	call imprime
+	call loop_prog
 	jmp finaliza
 
 exponenciacao:
 	call ler_numero
     mov num1, %eax
-
 	mov %eax, temp
-
-
 	jmp exp_check
+	call loop_prog
+	jmp finaliza
 
 exp_while:
 	mov temp, %eax
@@ -158,13 +186,14 @@ exp_check:
     cmp $1, %eax
     jg exp_while
 
-
 fim_exp:
     mov temp, %eax
 	call imprime
+	call loop_prog
 	jmp finaliza
 
 combinacao:
+	call loop_prog
 	jmp finaliza
 
 arranjo:
@@ -178,14 +207,15 @@ arranjo:
 	mov %eax, %ebx 
 	mov temp, %eax
 	idivl %ebx
-	call imprime 
+	call imprime
+	call loop_prog
 	jmp finaliza
-
 
 fatorial: 
 	mov num1, %edi
 	call fatorial_calc 
 	call imprime
+	call loop_prog
 	jmp finaliza 
 
 fatorial_calc:
@@ -203,13 +233,17 @@ fim_fat_calc:
 	ret
 	
 inverso:
+	call loop_prog
 	jmp finaliza
 
 raiz:
+	call loop_prog
 	jmp finaliza
 
 logaritmo:
+	call loop_prog
 	jmp finaliza
 
 prox_primo:
+	call loop_prog
 	jmp finaliza
