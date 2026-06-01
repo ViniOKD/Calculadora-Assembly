@@ -1,5 +1,5 @@
 .global main
-
+#oiw
 .section .data
 	msg0: .asciz "Digite o primeiro numero: \n"
 	msg1: .asciz "Digite o segundo numero: \n"
