@@ -1,6 +1,6 @@
 .global main
 
-# gcc -o trab01 -no-pie trab01.s
+# gcc -o trab01 -no-pie trab01.s lib.s
 # fazer:
 # - o primeiro operando DEVE ser um nuemro real
 # - As operações “+”, “-”, “*”, “/”, “^”, “c”, “a” e “l” devem receber o segundo operando (outro número real);
@@ -32,6 +32,7 @@
 	.lcomm operador, 1 # aloca 1 byte p/ operador
 	.lcomm temp, 4 # variavel temporaria
 	.lcomm continuar, 1 # controla o loop
+	.lcomm resultado, 4
 .section .text
 main:
 	push %rbp
@@ -113,12 +114,15 @@ main:
 imprime:
     push %rbp
     mov %rsp, %rbp
+	# formatador de saida
     mov $fmt_out, %rdi
+	# joga o eax no esi
     mov %eax, %esi       
     xor %eax, %eax
     call printf
     pop %rbp
     ret
+
 
 loop_prog:
 	push %rbp
@@ -150,12 +154,16 @@ finaliza:
 	ret
 
 soma:
+	# Trocar para registradores xmm
 	mov num1, %eax
 	add num2, %eax
 
 	call imprime
-	call loop_prog
+	call loop_prog 
 	jmp finaliza
+	; movss num1, %xmm0
+	; addss num2, %xmm0
+	; call imprime
 
 subtracao:
 	mov num1, %eax
@@ -193,11 +201,12 @@ erro_divisao:
 	jmp finaliza
 
 exponenciacao:
+	push %rbp
+	mov %rsp, %rbp
     mov num1, %eax
 	mov %eax, temp
 	jmp exp_check
-	call loop_prog
-	jmp finaliza
+	
 
 exp_while:
 	mov temp, %eax
@@ -215,14 +224,24 @@ fim_exp:
     mov temp, %eax
 	call imprime
 	call loop_prog
+	pop %rbp
 	jmp finaliza
 
 combinacao:
 	mov num1, %edi
 	call arranjo_calc
-	# salvar registradores caller-save
-	call inverso
-	# restaurar regsitradores caller-save
+	mov %eax, resultado
+	mov num1, %r13
+	mov num2, %r12
+	mov %r12, num1
+	call fatorial # resultado vai ta no eax
+	mov %eax, %ecx
+	mov $1, %eax
+	cdq
+	idivl %ecx
+	imul resultado, %eax
+	mov %r13, num1
+	call imprime
 	call loop_prog
 	jmp finaliza
 
@@ -247,7 +266,9 @@ arranjo_calc:
 	idivl %ebx
 	ret
 
-fatorial: 
+fatorial:
+	push %rbp
+	mov %rsp, %rbp
 	mov num1, %edi
 	call fatorial_calc 
 	call imprime
@@ -266,18 +287,27 @@ fat_loop:
 	jg fat_loop
 
 fim_fat_calc:
+	pop %rbp
 	ret
 	
 inverso:
-	# INiciar registro de ativação
-	# Empilha registradores calle-save
-	# 
-	# blooc de codigo
 
+	# INiciar registro de ativação
+	push %rbp
+	mov %rsp, %rbp
+	# Empilha registradores calle-save
+
+	# bloco de codigo
+	movl $1, %eax
+	cdq
+
+	movl num1, %ecx
+	idivl %ecx
 	# Restaurar registro de ativação da funcao chamadora pop %rbp
+	pop %rbp
 	# Restaurar registradores calle-save pop 
 	# ret
-
+	call imprime
 	call loop_prog
 	jmp finaliza
 
