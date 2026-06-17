@@ -8,21 +8,19 @@
 .extern arranjo
 .extern fatorial
 .extern inverso
+.extern raiz
 .extern imprime
 .extern num1
 .extern num2
 .extern temp
 .extern operacao
-# gcc -o trab01 -no-pie trab01.s lib.s
+# gcc -o trab01 -no-pie trab01_v2.s lib.s
 # fazer:
 # - o primeiro operando DEVE ser um nuemro real
 # - As operações “+”, “-”, “*”, “/”, “^”, “c”, “a” e “l” devem receber o segundo operando (outro número real);
-# - combinacao
-# - inverso
 # - raiz
 # - log
 # - proximo primo 
-# - Na operacao de divisao, verificar se o divisor = 0
 # - 	combinação, arranjo e fatorial, deve-se informar q n pode fzr operacoa quando houverem operandos negativos ou operandos que nao sao do tipo inteiro
 # - 	combinação e arranjo o valor do primeiro operando deve ser maior ou igual ao valor do segundo operando
 # - 	raiz deve informar que não é possivel realizar operacao com operando < 0
@@ -83,6 +81,9 @@ loop_main:
 
 	cmp $'i', %r12b
 	je inverso_caller
+
+	cmp $'r', %r12b
+	je raiz_caller
 
     # Operacoes com 2 operandos
 	mov $msg1, %rdi
@@ -183,6 +184,10 @@ inverso_caller:
     call imprime
     jmp loop_prog
 
+raiz_caller:
+	call raiz
+	
+	jmp loop_prog
 
 fim:
     pop %r12
