@@ -18,14 +18,10 @@
 # fazer:
 # - o primeiro operando DEVE ser um nuemro real
 # - As operações “+”, “-”, “*”, “/”, “^”, “c”, “a” e “l” devem receber o segundo operando (outro número real);
-# - raiz
+
 # - log
 # - proximo primo 
-# - 	combinação, arranjo e fatorial, deve-se informar q n pode fzr operacoa quando houverem operandos negativos ou operandos que nao sao do tipo inteiro
-# - 	combinação e arranjo o valor do primeiro operando deve ser maior ou igual ao valor do segundo operando
-# - 	raiz deve informar que não é possivel realizar operacao com operando < 0
-# - 	inverso deve informar que não e possivel realizar com numero = 0
-# - 	log, o logaritmando deve ser maior que 0 e a base um numero positivo != 1
+
 
 
 .section .data
@@ -33,10 +29,8 @@
 	msg1: .asciz "Digite o segundo numero: \n"
 	msg2: .asciz "Digite a operação: \n"
 	fmt_in: .asciz "%d"
-	fmt_out: .asciz "Resultado: %d\n"
 	fmt_char: .asciz " %c"
 	msg_continue: .asciz "Deseja continuar?: (s/n) \n"
-	msg_erro_zero: .asciz "Erro: O divisor não pode ser 0. \n"
 .bss 
 	.lcomm continuar, 1 # controla o loop
 

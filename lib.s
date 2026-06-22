@@ -7,21 +7,25 @@
 .global arranjo
 .global fatorial
 .global inverso
+.global raiz
 .global imprime
 .global num1
 .global num2
 .global temp
 .global operacao
 
+# CORRIGIR INVERSO
+# COLOCAR MENSAGENS DE ERRO
+# - 	combinação, arranjo e fatorial, deve-se informar q n pode fzr operacoa quando houverem operandos negativos ou operandos que nao sao do tipo inteiro
+# - 	combinação e arranjo o valor do primeiro operando deve ser maior ou igual ao valor do segundo operando
+# - 	raiz deve informar que não é possivel realizar operacao com operando < 0
+# - 	inverso deve informar que não e possivel realizar com numero = 0
+# - 	log, o logaritmando deve ser maior que 0 e a base um numero positivo != 1
 .section .data
-	msg0: .asciz "Digite o primeiro numero: \n"
-	msg1: .asciz "Digite o segundo numero: \n"
-	msg2: .asciz "Digite a operação: \n"
-	fmt_in: .asciz "%d"
 	fmt_out: .asciz "Resultado: %d\n"
-	fmt_char: .asciz " %c"
-	msg_continue: .asciz "Deseja continuar?: (s/n) \n"
+    fmt_out_float: .asciz "Resultado: %.2f\n"
 	msg_erro_zero: .asciz "Erro: O divisor não pode ser 0. \n"
+
 .bss 
 	.lcomm num1, 4 # alocacao de 4 bytes para int ou float p/ primeiro numero
 	.lcomm num2, 4 # alocacao de 4 bytes para int ou float p/ segundo numero
@@ -200,5 +204,25 @@ inverso:
 	idivl %ecx
 	# Restaurar registro de ativação da funcao chamadora pop %rbp
 	pop %rbp
+    ret
+
+raiz:
+    push %rbp
+    mov %rsp, %rbp
+
+    # zera os regs xmm0
+    pxor %xmm0, %xmm0
+    # converte o numero em float
+    cvtsi2ss num1, %xmm0
+    sqrtss   %xmm0, %xmm0 # faz a operacao
+
+    # converte em double pro printf
+    cvtss2sd %xmm0, %xmm0
+    # imprime como float
+    mov $fmt_out_float, %rdi     
+    mov $1, %eax
+    call printf
+
+    pop %rbp
     ret
 
