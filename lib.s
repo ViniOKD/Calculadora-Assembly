@@ -8,6 +8,7 @@
 .global fatorial
 .global inverso
 .global raiz
+.global prox_primo
 .global imprime
 .global num1
 .global num2
@@ -225,4 +226,55 @@ raiz:
 
     pop %rbp
     ret
+
+eh_primo:
+	push %rbp
+	mov %rsp, %rbp
+	cmp $2, %edi
+	jl nao_primo
+	je sim_primo
+
+	mov $2, %ecx
+
+loop_primo:
+	cmp %ecx, %edi
+	jle sim_primo
+
+	mov %edi, %eax
+	cdq
+	idivl %ecx
+	test %edx, %edx
+	je nao_primo
+	inc %ecx
+	jmp loop_primo
+
+sim_primo:
+	mov $1, %eax
+	pop %rbp
+	ret
+
+nao_primo:
+	mov $0, %eax
+	pop %rbp
+	ret
+
+prox_primo:
+	push %rbp
+	mov %rsp, %rbp
+	mov num1, %edi
+	inc %edi
+
+busca_primo:
+	call eh_primo
+	test %eax, %eax
+	jne achou_primo
+	inc %edi
+	jmp busca_primo
+
+achou_primo:
+	mov %edi, %eax
+	call imprime
+	pop %rbp
+	ret
+
 

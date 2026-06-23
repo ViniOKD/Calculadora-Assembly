@@ -10,6 +10,7 @@
 .extern inverso
 .extern raiz
 .extern imprime
+.extern prox_primo
 .extern num1
 .extern num2
 .extern temp
@@ -78,6 +79,9 @@ loop_main:
 
 	cmp $'r', %r12b
 	je raiz_caller
+
+    cmp $'p', %r12b
+    je prox_primo_caller
 
     # Operacoes com 2 operandos
 	mov $msg1, %rdi
@@ -183,8 +187,14 @@ raiz_caller:
 	
 	jmp loop_prog
 
+prox_primo_caller:
+    call prox_primo
+    jmp loop_prog
+
 fim:
     pop %r12
     pop %r13
     pop %rbp
     ret
+
+
