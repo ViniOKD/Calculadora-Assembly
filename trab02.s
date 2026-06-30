@@ -22,11 +22,19 @@
     msg_inv_op: .asciz "Operacao desconhecida.\n"
     fmt_in: .asciz "%f"
     fmt_char: .asciz " %c"
+    dez_float: .float 10.0
+    zero_float: .float 0.0
 
-.bss
+.section .bss
     .lcomm buf_input, 64
     .lcomm buf_output, 4
     .lcomm continuar, 1 # controla o loop
+
+vetor_funcoes:
+    .skip 108 # reserva 108 bytes para 27 inteiros
+
+vetor_variaveis:
+    .skip 108 # mesma coisa
 
 .section .text
 main:
@@ -49,7 +57,7 @@ loop_main:
     
     mov $buf_input, %rdi # coloca o endereço de buf dentro de rdi
     call parse_numero
-    mov %eax, num1
+    movss %xmm0, num1
     # movss %xmm0, num1
     mov (%rdi), %r12d # pega o operador e coloca em r12
     inc %rdi
@@ -61,7 +69,7 @@ loop_main:
     je inverso_caller
 
     call parse_numero
-    mov %eax, num2
+    movss %xmm0, num2
 
     cmp  $'+', %r12b
     je   soma_caller
@@ -78,14 +86,16 @@ loop_main:
     cmp  $'a', %r12b
     je   arranjo_caller
 
+# 
 op_invalida:
     mov $msg_inv_op, %rdi
     call sys_print
     jmp loop_prog
 
+# Callers
 soma_caller:
-    call soma_int
-    call imprime
+    call soma
+    call imprime_float
     jmp loop_prog
  
 subtracao_caller:
@@ -95,7 +105,7 @@ subtracao_caller:
  
 multiplicacao_caller:
     call multiplicacao
-    call imprime
+    call imprime_float
     jmp loop_prog
  
 divisao_caller:
@@ -108,6 +118,7 @@ exponenciacao_caller:
     jmp loop_prog
 
 combinacao_caller:
+    
     call combinacao
     jmp loop_prog
  
@@ -116,7 +127,8 @@ arranjo_caller:
     jmp loop_prog
  
 fatorial_caller: 
-    mov num1(%rip), %edi
+    mov num1, %edi
+    cvttss2si %xmm0, %edi
     call fatorial
     call imprime
     jmp loop_prog
@@ -130,6 +142,7 @@ raiz_caller:
     call raiz
     jmp loop_prog
 
+# Loop
 loop_prog:
     mov $msg_cont, %rdi
     call sys_print
@@ -144,38 +157,86 @@ loop_prog:
     
     jmp fim
 
-parse_numero:
+#
+# Funcao Parse
+parse_numero: # o endereco do buffer esta em rdi
+    push %rbp
+    mov %rsp, %rbp
     push %rbx
-    xor %eax, %eax # zera eax
-    xor %ebx, %ebx  # zera ebx, que será usado para marcar se o número é negativo
-    xor %ecx, %ecx # zera ecx, que será usado para armazenar o caractere atual
-    movzx (%rdi), %ecx # le um caractere
-    cmp $'-', %cl
-    jne parse_loop
-    mov $1, %ebx # se for negativo marca ebx com 1              
-    inc %rdi                   
 
-parse_loop:
+    xor %ebx, %ebx
+    movss zero_float, %xmm0 # acumulador
+
     movzx (%rdi), %ecx 
-    cmp $'0', %cl # compara se está entre 0 e 9
+    cmp $'-', %cl
+    jne parse_int_loop
+    mov $1, %ebx
+    inc %rdi
+
+    // xor %eax, %eax # zera eax
+    // xor %ebx, %ebx  # zera ebx, que será usado para marcar se o número é negativo
+    // xor %ecx, %ecx # zera ecx, que será usado para armazenar o caractere atual
+    // movzx (%rdi), %ecx # le um caractere
+    // cmp $'-', %cl
+    // jne parse_loop
+    // mov $1, %ebx # se for negativo marca ebx com 1              
+    // inc %rdi                   
+
+parse_int_loop:
+    movzx (%rdi), %eax # joga o endereco do rdi no eax
+    cmp $'.', %cl
+    je parse_real
+
+    cmp $'0', %cl
     jl parse_fim
-    cmp $'9', %cl 
+    cmp $'9', %cl
     jg parse_fim
-    imul $10, %eax # multiplca 10 antes de somar o proximo numero
-    sub $'0', %cl # converte caractere para inteiro '0' = 48   
-    add %ecx, %eax           
-    inc %rdi # incrementa o ponteiro
-    jmp parse_loop
+
+    mulss dez_float, %xmm0 # multiplica o acumulador por 10.0
+
+    sub $'0', %cl
+    cvtsi2ss %ecx, %xmm1
+    addss %xmm1, %xmm0 
+
+    inc %rdi
+    jmp parse_int_loop
+
+parse_real:
+    inc %rdi # pra pular o '.'
+    movss dez_float, %xmm2 
+
+parse_real_loop:
+    movzx (%rdi), %ecx
+    cmp $'0', %cl
+    jl parse_fim
+    cmp $'9', %cl
+    jg parse_fim
+    sub $'0', %cl
+    cvtsi2ss %ecx, %xmm1
+
+    divss %xmm2, %xmm1
+    addss %xmm1, %xmm0
+    mulss dez_float, %xmm2
+
+    inc %rdi
+    jmp parse_real
+
+
+
 
 parse_fim:
     test %ebx, %ebx
     jz parse_ret
-    neg %eax
+    
+    # Se era negativo inverte o valor de xmm0
+    movss zero_float, %xmm1
+    subss %xmm0, %xmm1
+    movaps %xmm1, %xmm0
 
 parse_ret:
     pop %rbx
     ret
-
+# Leitura
 sys_readline:
     push %rbp
     mov  %rsp, %rbp

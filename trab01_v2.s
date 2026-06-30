@@ -20,9 +20,6 @@
 .extern operacao
 # gcc -o trab01 -no-pie trab01_v2.s lib.s
 
-
-
-
 .section .data
 	msg0: .asciz "Digite o primeiro numero: \n"
 	msg1: .asciz "Digite o segundo numero: \n"
