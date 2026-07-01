@@ -182,6 +182,7 @@ combinacao_caller:
     ja erro_operador_maior # 
 
     call combinacao
+    call imprime_float
     jmp loop_prog
 
 arranjo_caller:
@@ -200,6 +201,7 @@ arranjo_caller:
     ja erro_operador_maior # 
 
     call arranjo
+    call imprime_float
     jmp loop_prog
 
 fatorial_caller:
@@ -211,7 +213,8 @@ fatorial_caller:
     mov %eax, %edi # passa o valor inteiro de num1 para %edi
 
     call fatorial
-    call imprime
+    cvtsi2ss %eax, %xmm0
+    call imprime_float
     jmp loop_prog
 
 inverso_caller:
@@ -242,6 +245,7 @@ prox_primo_caller:
 
 
     call prox_primo
+    call imprime_float
     jmp loop_prog
 
 logaritmo_caller:

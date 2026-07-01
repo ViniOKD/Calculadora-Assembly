@@ -57,15 +57,6 @@ imprime_float:
 	ret
 # Funcoes
 
-soma_int:
-	push %rbp
-	mov %rsp, %rbp
-	mov num1, %eax
-	mov num2, %ebx
-	add %ebx, %eax
-	pop %rbp
-	ret
-
 
 soma:
     push %rbp
@@ -156,12 +147,11 @@ combinacao:
     mov %rsp, %rbp
     push %r12
     push %r13
-
-	mov num1, %edi
+	cvtss2si num1, %edi # converte num1 para inteiro e joga no edi
 	call arranjo_calc # retorna valor no eax
 	mov %eax, %r12d # joga o calculo do arranjo na temp
+	cvtss2si num2, %edi # converte num1 para inteiro e joga no edi
 
-    mov num2, %edi # joga num2 no edi 
 	call fatorial # resultado vai ta no eax
     mov %eax, %ecx
 	# calcula o inverso -> 1/r!
