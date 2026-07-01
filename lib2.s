@@ -71,60 +71,49 @@ imprime_float:
     mov %rsp, %rbp
     sub $16, %rsp         
     
-    # Verificacao se é negativo
     xorps %xmm1, %xmm1    
     ucomiss %xmm1, %xmm0  # Compara xmm0 com 0.0
     jae ifloat_pos        # Se for >= 0, pula
-    
-    # É negativo: Imprime o "-"
+
     lea char_menos(%rip), %rdi
     call sys_print
     
-    # Inverte o sinal de xmm0 (0.0 - xmm0) para trabalhar apenas com positivos
     xorps %xmm2, %xmm2
     subss %xmm0, %xmm2
     movaps %xmm2, %xmm0
 
 ifloat_pos:
-    # Extrai e imprime a Parte Inteira
     cvttss2si %xmm0, %eax # Converte xmm0 truncando para inteiro
-    mov %eax, -4(%rbp)    # Salva a parte inteira na pilha
-    call print_uint       # Imprime a parte inteira
+    mov %eax, -4(%rbp) # Salva a parte inteira na pilha
+    call print_uint # Imprime a parte inteira
     
-    # 3. Imprime a vírgula / ponto decimal
+
     lea char_ponto(%rip), %rdi
     call sys_print
 
-    # 4. Calcula a Parte Fracionária
-    mov -4(%rbp), %eax    # Recupera a parte inteira
-    cvtsi2ss %eax, %xmm1  # Converte a parte inteira de volta para float
-    subss %xmm1, %xmm0    # Float original - Inteiro = Fração (Ex: 12.75 - 12.0 = 0.75)
+    mov -4(%rbp), %eax    
+    cvtsi2ss %eax, %xmm1  
+    subss %xmm1, %xmm0    
     
-    # Multiplica por 100.0 para ter 2 casas decimais (0.75 * 100 = 75.0)
     movss cem_float(%rip), %xmm2
     mulss %xmm2, %xmm0
-    
-    # Converte a fração final para inteiro
     cvttss2si %xmm0, %eax
-    
-    # 5. Tratamento de zeros à esquerda na fração (Ex: .05)
+
     # Se a fração for menor que 10, multiplicá-la por 100 resulta em algo < 10 (ex: 5).
     # Precisamos imprimir um '0' antes, para não sair "12.5" em vez de "12.05"
     cmp $10, %eax
     jge ifloat_frac_print
     
-    mov %eax, -8(%rbp)    # Salva o valor rapidinho
+    mov %eax, -8(%rbp)    
     lea char_zero(%rip), %rdi
     call sys_print
     mov -8(%rbp), %eax
 
 ifloat_frac_print:
-    call print_uint       # Imprime os dígitos da fração
-    
-    # 6. Pula uma linha no final
+    call print_uint   
+  
     lea char_nl(%rip), %rdi
     call sys_print
-
     mov %rbp, %rsp
     pop %rbp
     ret
@@ -138,16 +127,15 @@ print_uint:
     push %rdx
     push %rdi
     push %rsi
-
+    
     mov $int_buffer, %rsi
-    add $30, %rsi         # Aponta para o final do buffer
-    movb $0, (%rsi)       # Coloca o terminador nulo ('\0') no final
-    mov $10, %ebx         # O divisor será 10
+    add $30, %rsi         
+    movb $0, (%rsi)       
+    mov $10, %ebx        
 
     test %eax, %eax
     jnz uint_loop
     
-    # Se o número for 0, coloca '0' manualmente
     dec %rsi
     movb $'0', (%rsi)
     jmp uint_done
@@ -156,17 +144,17 @@ uint_loop:
     test %eax, %eax
     jz uint_done
     
-    xor %edx, %edx        # Zera edx antes da divisão
-    div %ebx              # Divide edx:eax por 10. (Quociente -> eax, Resto -> edx)
+    xor %edx, %edx      
+    div %ebx            
     
-    add $'0', %dl         # Soma 48 ('0') ao resto para virar ASCII
-    dec %rsi              # Anda para tras no buffer
-    movb %dl, (%rsi)      # Salva o caractere
+    add $'0', %dl         
+    dec %rsi             
+    movb %dl, (%rsi)      
     jmp uint_loop
 
 uint_done:
-    mov %rsi, %rdi        # Passa o ponteiro do inicio da string para rdi
-    call sys_print        # Chama a sua funcao de print do trab02.s
+    mov %rsi, %rdi        
+    call sys_print      
     
     pop %rsi
     pop %rdi
@@ -270,25 +258,23 @@ combinacao:
     push %r12
     push %r13
     
-    # 1. A funcao arranjo_calc ja faz a busca das variaveis sozinha agora.
     call arranjo_calc 
     mov %eax, %r12d           # joga o calculo do arranjo em r12d
     
-    # 2. Calcula fatorial(num2)
+    #  Calcula fatorial
     movss num2(%rip), %xmm0   # Carrega o float num2
     cvttss2si %xmm0, %edi     # Converte para int
     call fatorial 
     mov %eax, %ecx
     
-    # 3. Calcula a Combinacao (arranjo / fatorial(num2))
+    # Calcula a Combinacao 
     mov %r12d, %eax
     cdq
     idivl %ecx
 
-    # 4. Imprime o resultado final convertido para float
+
     cvtsi2ss %eax, %xmm0
-    
-    # CORRIGIDO: A ordem do POP deve ser estritamente o inverso do PUSH (LIFO)
+
     pop %r13
     pop %r12
     pop %rbp
@@ -300,23 +286,19 @@ arranjo:
     mov %rsp, %rbp
     
     call arranjo_calc
-    
-    # O arranjo retorna um inteiro no %eax.
-    # Convertendo para float e usando a nova funcao de impressao:
     cvtsi2ss %eax, %xmm0
-    
     
     pop %rbp
     ret
 
 arranjo_calc:
-# 1. Calcula fatorial(num1)
+    #  calcula fatoria(num1)
     movss num1(%rip), %xmm0   # Carrega o float
     cvttss2si %xmm0, %edi     # Converte para int e joga no %edi
     call fatorial
     mov %eax, temp(%rip)      # Salva na temp
     
-    # 2. Calcula fatorial(num1 - num2)
+    # calcula fatorial(num1 - num2)
     movss num1(%rip), %xmm0   
     movss num2(%rip), %xmm1
     subss %xmm1, %xmm0        # Subtrai os floats primeiro (xmm0 = num1 - num2)
@@ -324,7 +306,7 @@ arranjo_calc:
     
     call fatorial
     
-    # 3. Divisao do Arranjo (temp / fatorial(num1-num2))
+    # divisao do arranjo (temp / fatorial(num1-num2))
     mov %eax, %ebx 
     mov temp(%rip), %eax
     xor %edx, %edx
@@ -355,7 +337,6 @@ inverso:
 	# bloco de codigo
 	movss float_um, %xmm0
 	divss num1, %xmm0
-	
 	
 	pop %rbp
     ret
@@ -430,19 +411,19 @@ logaritmo: # recebe logaritmando em xmm0 e base em xmm1
 	mov %rsp, %rbp
 	sub $16, %rsp
 
-	# Calcula log2(logaritmando)
+	# calcula log2(logaritmando)
     movss %xmm0, (%rsp)
     fld1
 	flds (%rsp)
     fyl2x
 
-	# Calcula log2(base)
+	# calcula log2(base)
     movss %xmm1, (%rsp)
     fld1
     flds (%rsp)
 	fyl2x
 
-	# Mudanca de base
+	# mudanca de base
 
 	fdivrp
 
