@@ -20,6 +20,7 @@
 # 
 # 
 .section .data
+    msg_debug: .asciz "ENTREI\n"
     msg0: .asciz "Digite a expressao: \n"
     msg_cont:   .asciz "Deseja continuar? (s/n): \n"
     msg_inv_op: .asciz "Operacao desconhecida.\n"
@@ -28,16 +29,19 @@
     msg_erro_nao_inteiro_negativo: .asciz "Erro: O Operando deve ser um número inteiro não-negativo.\n"
     msg_erro_base_log: .asciz "Erro: A base do logaritmo deve ser maior que 0 e diferente de 1.\n"
     msg_operador_maior: .asciz "Erro: O primeiro operando deve ser maior ou igual ao segundo.\n"
+    msg_inv_exp: .asciz "Erro: Expressão inválida.\n"
+    msg_func_malformado: .asciz "Erro: Função mal formada.\n"
     fmt_in: .asciz "%f"
     fmt_char: .asciz " %c"
     dez_float: .float 10.0
     zero_float: .float 0.0
-    vetor_variaveis: .skip 26*32 # [10, a+20, 40]
+    vetor_variaveis: .skip 26*4 # [10, a+20, 40]
     
 .section .bss
     .lcomm buf_input, 64
     .lcomm buf_output, 4
     .lcomm continuar, 1 # controla o loop
+    .lcomm vetor_funcoes, 832 # guarda as expressoes 
     
 .section .text
 main:
@@ -116,29 +120,30 @@ atribuicao:
     movzbq %al, %rax
     add $2, %rdi # pula a=
     call parse_numero
-    movss %xmm0, vetor_variaveis(,%rax,32) # coloca o valor no vetor de variaveis 
+    movss %xmm0, vetor_variaveis(,%rax,4) # coloca o valor no vetor de variaveis 
     jmp loop_prog
 
 consulta: # valor da variavel vai pra xmm0
     movb (%rdi), %al # pega a letra
     subb $'a', %al # 'a'->0, 'b'->1, ...
     movzbq %al, %rax # índice
-    movss vetor_variaveis(,%rax,32), %xmm0
+    movss vetor_variaveis(,%rax,4), %xmm0
     call imprime_float
     jmp loop_prog
 
+
+# Tratamento de funcoes 
 trata_funcao:
     movzbl (%rdi), %eax # letra da funcao
-    sub $'a', %al       # tira o a em ascii do al pra pegar o indice da letra da funcao
+    sub $'a', %al # tira o a em ascii do al pra pegar o indice da letra da funcao
     movzbl %al, %r13d
 
-    mov 2(%rdi), %rsi   # pula o '('
-    mov %rsi, %rcx      
+    lea 2(%rdi), %rcx # pula "f()"
 
 procura_parenteses:
     movzbl (%rcx), %edx   
     test %dl, %dl
-    # botar um erro de parenteses
+    je erro_func_malformado 
     cmp $')', %dl
     je fim_parenteses
     inc %rcx
@@ -147,18 +152,80 @@ procura_parenteses:
 fim_parenteses: 
     movzbl 1(%rcx), %edx # rcx aponta pro ')' e pega o próximo caractere
     cmp $'=', %dl
-    je atribuicao_funcao
-    # jump pra um outro lugar pra executar a funcao
+    je definicao_funcao
+    jmp chama_funcao
 
-atribuicao_funcao:
-    mov %rcx, %rax
-    sub %rsi, %rax # tamanho da expressao
-    cmp $1, %rax
-    # jne erro algum aqui
-
-    movzbl (%rsi), %eax # letra do parametro da funcao 
-
+# Define funcao -> Salva no vetor_funcoes[indice] o corpo da funcao
+definicao_funcao:
+    # O %rdi original ainda aponta para o começo da string (ex: "f(a)=10+a")
+    # Portanto, a letra do parâmetro ('a') está exatamente no deslocamento 2
+    movzbl 2(%rdi), %r9d         # Salva o parâmetro temporariamente em %r9d
     
+    lea 2(%rcx), %rsi            # %rsi aponta para o caractere depois do '=' (início do corpo)
+    
+    # Calcula o endereço destino no vetor de funções
+    mov %r13, %rax
+    imul $32, %rax
+    mov $vetor_funcoes, %rdi
+    add %rax, %rdi               # %rdi = destino: vetor_funcoes[indice]
+
+    # Grava o parâmetro no byte 0 e avança o ponteiro
+    movb %r9b, (%rdi)
+    inc %rdi                     # O corpo começará a ser gravado no byte 1
+
+    mov $30, %r8                 # Ajusta o limite de cópia (sobram 30 bytes + 1 pro null)
+    
+copia_corpo:
+    movzbl (%rsi), %eax
+    movb %al, (%rdi)
+    test %al, %al
+    je loop_prog                 # fim da string original
+    inc %rsi
+    inc %rdi
+    dec %r8
+    jnz copia_corpo
+
+    movb $0, (%rdi)              # Força terminador caso o limite estoure
+    jmp loop_prog
+
+# Chama uma funcao ja definida -> Avalia o argumento e executa o corpo
+chama_funcao:
+
+    inc %rdi                      # Vai pro '('
+    cmpb $'(', (%rdi)
+    jne erro_func_malformado
+    inc %rdi                      # Vai pro argumento (ex: '2')
+
+    call parse_operando          
+    cmpb $')', (%rdi)
+    jne erro_func_malformado
+    inc %rdi                      
+
+    movaps %xmm0, %xmm7          
+
+    mov $vetor_funcoes, %rsi     
+    mov %r13, %rax               
+    imul $32, %rax
+    add %rax, %rsi               # %rsi aponta pro vetor da função
+
+    movzbl (%rsi), %eax          # Lê o parâmetro que salvamos na definicao (byte 0)
+    test %al, %al
+    je erro_func_malformado      # Se for 0, função não existe
+
+    cmp $'a', %al
+    jl erro_func_malformado
+    cmp $'z', %al
+    jg erro_func_malformado
+
+    sub $'a', %al                
+    movzbq %al, %rax
+    movss %xmm7, vetor_variaveis(,%rax,4)
+
+    inc %rsi                     # Pula o byte do parâmetro, caindo no começo do corpo
+    mov %rsi, %rdi               # Redireciona o %rdi (ex: agora ele aponta para "10+a")
+
+    jmp nao_variavel             # Avalia a expressão da função
+
 # Callers
 soma_caller:
     call soma
@@ -306,6 +373,7 @@ loop_prog:
     
     jmp fim
 
+# Parser
 parse_operando: # rdi aponta pro caractere atual retorna valor em xmm0, avança rdi
     movzx (%rdi), %eax
     cmp $'a', %al
@@ -390,6 +458,7 @@ parse_ret:
     pop %rbx
     pop %rbp
     ret
+
 # Leitura
 sys_readline:
     push %rbp
@@ -429,34 +498,7 @@ rl_fim:
     pop %rbp
     ret
 
-; sys_print:
-;     push %rbp
-;     mov %rsp, %rbp
-;     push %rbx
-;     push %rcx
-
-;     mov %rdi, %rbx
-;     xor %rcx, %rcx
-
-; sp_len:
-;     cmpb $0, (%rbx, %rcx)
-;     je sp_write
-;     inc %rcx
-;     jmp sp_len
-
-; sp_write:
-;     mov $1, %eax 
-;     mov $1, %rdi
-;     mov %rbx, %rsi 
-;     mov %rcx, %rdx
-;     syscall
-
-;     pop %rcx
-;     pop %rbx
-;     pop %rbp
-;     ret
-
-# Validacoes 
+# Validacoes
 
 valida_inteiro_positivo:
     push %rbp
@@ -566,6 +608,17 @@ erro_base_log:
 erro_operador_maior:
     mov $msg_operador_maior, %rdi
     xor %eax, %eax
+    call sys_print
+    jmp loop_prog
+
+erro_expressao_invalida:
+    mov $msg_inv_exp, %rdi
+    xor %eax, %eax
+    call sys_print
+    jmp loop_prog
+
+erro_func_malformado:
+    mov $msg_func_malformado, %rdi
     call sys_print
     jmp loop_prog
 
