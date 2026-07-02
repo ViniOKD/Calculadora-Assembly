@@ -1,3 +1,4 @@
+.global _start
 .global main
 .extern soma
 .extern soma_int
@@ -16,7 +17,11 @@
 .extern temp
 .extern operacao
 .extern sys_print
-  
+#
+# as --64 -o trab02.o trab02.s
+# as --64 -o lib.o lib.s
+# ld -o programa trab02.o lib.o
+#
 .section .data
     msg_debug: .asciz "ENTREI\n"
     msg0: .asciz "Digite a expressao: \n"
@@ -42,12 +47,11 @@
     .lcomm vetor_funcoes, 832 # guarda as expressoes 
     
 .section .text
-main:
-    push %rbp
-    mov %rsp, %rbp
+_start:
     call inicio
-    pop %rbp
-    ret
+    mov $60, %rax    # syscall exit
+    xor %rdi, %rdi
+    syscall
     
 inicio: 
     push %rbp
@@ -58,10 +62,12 @@ inicio:
 loop_main:
     mov $msg0, %rdi
     call sys_print 
+
     call sys_readline 
     mov $buf_input, %rdi # coloca o endereço de buf dentro de rdi
     mov (%rdi), %al # pega o primeiro carac
-    cmp $'a', %al # ve se o primerrio carac é uma letra
+    # ve se o primeiro carac é uma letra
+    cmp $'a', %al 
     jl nao_variavel
     cmp $'z', %al
     jg nao_variavel
@@ -70,12 +76,13 @@ loop_main:
     cmp $'=', %cl # ve se é atribuicao
     je atribuicao    
     cmp $0, %cl  # ve se é EOF
-    je consulta # a _> xmm0
+    je consulta 
     cmp $'(', %cl  # ve se é uma funcao
     je trata_funcao 
     
-nao_variavel: # 
-    call parse_operando # ################################################### a+b -> parse -> a -> consulta -> xmm0, b -> parse -> xmm0 
+nao_variavel: 
+    call parse_operando # Dps do parse_operando, o ponteiro (rdi) aponta pro operador e o valor vem em xmm0
+
     movss %xmm0, num1 # num1 = xmm0
     mov (%rdi), %r12d # pega o operador e coloca em r12
     inc %rdi
@@ -88,7 +95,7 @@ nao_variavel: #
     cmp $'p', %r12b
     je prox_primo_caller
 
-    call parse_operando 
+    call parse_operando # resultado vem em xmm0, rdi vai estar em EOF/quebra de linha?
     movss %xmm0, num2 # num2 = xmm0
 
     cmp $'+', %r12b
@@ -115,19 +122,20 @@ op_invalida:
     jmp loop_prog
     
 atribuicao:
-    sub $'a', %al
-    movzbq %al, %rax
-    add $2, %rdi # pula a=
-    call parse_numero
+    sub $'a', %al # pega o indice da letra da variavel (0-25)
+    movzbq %al, %rax # joga no rax, zero extendendo
+    add $2, %rdi # anda o ponteiro pra pular a letra e o '='
+    call parse_numero # resultado vem em xmm0
     movss %xmm0, vetor_variaveis(,%rax,4) # coloca o valor no vetor de variaveis 
     jmp loop_prog
 
-consulta: # valor da variavel vai pra xmm0
+consulta: # valor da variavel vai pra xmm0 
+    # o caracter da variavel ja esta em al?
     movb (%rdi), %al # pega a letra
-    subb $'a', %al # 'a'->0, 'b'->1, ...
-    movzbq %al, %rax # índice
-    movss vetor_variaveis(,%rax,4), %xmm0
-    call imprime_float
+    subb $'a', %al # calcula o indice da letra da variavel (0-25)
+    movzbq %al, %rax # joga no rax
+    movss vetor_variaveis(,%rax,4), %xmm0  # pega o valor da variavel no vetor e joga no xmm0
+    call imprime_float 
     jmp loop_prog
 
 
@@ -191,7 +199,6 @@ copia_corpo:
 
 # Chama uma funcao ja definida -> Avalia o argumento e executa o corpo
 chama_funcao:
-
     inc %rdi # Vai pro '('
     cmpb $'(', (%rdi)
     jne erro_func_malformado
@@ -226,6 +233,7 @@ chama_funcao:
 avalia_funcao:
     push %rbp
     mov %rsp, %rbp
+
     push %r13
     push %r14
     push %r15
@@ -233,7 +241,7 @@ avalia_funcao:
     movzbl (%rdi), %eax # letra da funcao
     sub $'a', %al
     movzbl %al, %r13d # indice da funcao
-    add $2, %rdi # pula "L(" -> aponta pro argumento
+    add $2, %rdi # pula "f(" -> aponta pro argumento
 
     call parse_operando # avalia o argumento (numero, variavel ou outra chamada)
     cmpb $')', (%rdi)
@@ -243,10 +251,10 @@ avalia_funcao:
 
     movaps %xmm0, %xmm7 # guarda o valor do argumento
 
-    mov $vetor_funcoes, %rsi
-    mov %r13, %rax
-    imul $32, %rax
-    add %rax, %rsi # %rsi -> registro da funcao
+    mov $vetor_funcoes, %rsi # joga o vetor no rsi
+    mov %r13, %rax # indice no rax
+    imul $32, %rax # multiplica por 32 (tamanho de cada funcao)
+    add %rax, %rsi # %rsi aponta pro inicio da funcao no vetor_funcoes, entao somando com rax ele aponta pro byte 0 da funcao (parametro)
     movzbl (%rsi), %eax # parametro (byte 0)
     test %al, %al
     je af_malformado # funcao nao definida
@@ -261,7 +269,7 @@ avalia_funcao:
     inc %rsi # %rsi -> corpo da funcao
     mov %rsi, %r15 # guarda ponteiro do copo
 
-    mov num1, %eax # preserva num1/num2 do contexto externo
+    mov num1, %eax # guarda num1 e num2 na pilha, pois eles serão sobrescritos
     push %rax
     mov num2, %eax
     push %rax
@@ -272,13 +280,13 @@ avalia_funcao:
     movzbl (%rdi), %r13d # operador do corpo
     inc %rdi
 
-    cmp $'!', %r12b
+    cmp $'!', %r13b
     je af_fatorial
-    cmp $'r', %r12b
+    cmp $'r', %r13b
     je af_raiz
-    cmp $'i', %r12b
+    cmp $'i', %r13b
     je af_inverso
-    cmp $'p', %r12b
+    cmp $'p', %r13b
     je af_prox_primo
 
     call parse_operando
@@ -294,12 +302,12 @@ avalia_funcao:
     je af_div
     cmp $'^', %r13b
     je af_exp
-              
-    cmp $'l', %r12b
+
+    cmp $'l', %r13b
     je af_logaritmo
-    cmp $'c', %r12b
+    cmp $'c', %r13b
     je af_combinacao
-    cmp $'a', %r12b
+    cmp $'a', %r13b
     je af_arranjo
 
 
@@ -394,8 +402,8 @@ af_fatorial:
 
     call fatorial
     cvtsi2ss %eax, %xmm0
-    call fatorial
     jmp af_fim
+
 
 af_raiz:
     movss num1, %xmm0
@@ -426,9 +434,9 @@ af_exp:
     jmp af_fim
 
 af_fim:
-    pop %rax # restaura num1/num2 do contexto externo
+    pop %rax # restaura num2 
     mov %eax, num2
-    pop %rax
+    pop %rax # restaura num1
     mov %eax, num1
     mov %r14, %rdi # restaura %rdi externo (depois do ')')
     pop %r15
@@ -444,6 +452,7 @@ af_malformado:
     pop %r13
     pop %rbp
     jmp erro_func_malformado
+
 # Callers
 soma_caller:
     call soma
@@ -635,20 +644,21 @@ parse_numero: # o endereco do buffer esta em rdi
 # Se for diferente de um numero 0-9, encerra
 parse_int_loop:
     movzx (%rdi), %ecx # joga o caracter rdi no ecx
-    cmp $'.', %cl
-    je parse_real
+    cmp $'.', %cl 
+    je parse_real 
 
+    # ve se é numero 0-9, se nao for, sai do loop
     cmp $'0', %cl
     jl parse_fim
     cmp $'9', %cl
     jg parse_fim
-
+    # multiplica o acumulador por 10.0
     mulss dez_float, %xmm0 # multiplica o acumulador por 10.0
 
     sub $'0', %cl
     cvtsi2ss %ecx, %xmm1
     addss %xmm1, %xmm0 
-endereco
+
     inc %rdi
     jmp parse_int_loop
 
@@ -694,27 +704,30 @@ sys_readline:
     push %rbx
     push %r15
 
-    mov $buf_input, %rbx
-    xor %r15, %r15
+    mov $buf_input, %rbx # joga o buffer pro rbx
+    xor %r15, %r15 # zera r15
 
 rl_loop:
-    mov $0, %eax
-    mov $0, %rdi
-    mov %rbx, %rsi
-    add %r15, %rsi # calcula o endereço onde o prox byte sera escrito
-    mov $1, %rdx
-    syscall
+    mov $0, %eax   # syscall pra sys_read
+    mov $0, %rdi   
+    mov %rbx, %rsi # joga o buffer pro rsi e soma r15 pra ir pro prox byte
+    add %r15, %rsi # 
+    mov $1, %rdx   # qtd de bytes a ler
+    syscall        # le 1 byte e escreve no endereco passado -> rdx?
 
-    cmp $0, %eax
+    cmp $0, %eax   # se syscall retornar 0, EOF, entao termina
     jle rl_fim               
 
+    # ve se é quebra de linha/Enter, se for termina 
     movzx (%rbx, %r15), %eax
     cmp $'\n', %al
     je rl_fim
 
+
     cmp $63, %r15
     jge rl_fim
 
+    # Continua o loop pra ler tudo
     inc %r15
     jmp rl_loop
 
