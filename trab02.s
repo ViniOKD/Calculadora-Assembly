@@ -438,7 +438,10 @@ af_fim:
     ret
 
 af_malformado:
-    mov %rbp, %rsp
+    pop %rax
+    pop %r15
+    pop %r14
+    pop %r13
     pop %rbp
     jmp erro_func_malformado
 # Callers
@@ -590,18 +593,22 @@ loop_prog:
 
 # Parser
 parse_operando: # rdi aponta pro caractere atual retorna valor em xmm0, avança rdi
-    movzx (%rdi), %eax
+    movzx (%rdi), %eax  # le o byte apontado pelo rdi
+    # Verificação se o caracter é uma letra, pula para 'po_numero' caso não seja letra
     cmp $'a', %al
     jl po_numero
     cmp $'z', %al
     jg po_numero
-    cmpb $'(', 1(%rdi) # ve se é uma funcao
+    # Verifica o caracter afrente do cursor, se for '(' entendemos que é o nome de uma funcao sendo chamada
+    cmpb $'(', 1(%rdi) 
     je avalia_funcao
-    sub $'a', %al
-    movzbq %al, %rax
-    mov $vetor_variaveis, %rdx
-    movss (%rdx, %rax, 4), %xmm0
-    inc %rdi
+
+    # Apartir daqui assumimos que a entrada é uma variavel,
+    sub $'a', %al # Transforma o caracter em indice de 0-25, com 'a' = 0
+    movzbq %al, %rax  # joga esse indice no rax, zero estendendo ele pra caber sem guardar lixo
+    mov $vetor_variaveis, %rdx # carrega o 'vetor_variaveis' no rdx
+    movss (%rdx, %rax, 4), %xmm0 # le o flot na posicao (rax * 4) | xmm0 =vetor_variaveis[indice=rax] 
+    inc %rdi # avança o ponteiro
     ret
 
 po_numero:
@@ -615,15 +622,19 @@ parse_numero: # o endereco do buffer esta em rdi
     xor %ebx, %ebx
     movss zero_float, %xmm0 # acumulador
 
+    # verifica se o numero é negativo ou nao
+    # se for, marca o %ebx com 1
     movzx (%rdi), %ecx 
     cmp $'-', %cl
     jne parse_int_loop
     mov $1, %ebx
     inc %rdi
                 
-
+# A cada iteração le um caracter, se encontrar '.'
+# muda o parsing da parte fracionaria
+# Se for diferente de um numero 0-9, encerra
 parse_int_loop:
-    movzx (%rdi), %ecx # joga o endereco do rdi no eax
+    movzx (%rdi), %ecx # joga o caracter rdi no ecx
     cmp $'.', %cl
     je parse_real
 
@@ -637,7 +648,7 @@ parse_int_loop:
     sub $'0', %cl
     cvtsi2ss %ecx, %xmm1
     addss %xmm1, %xmm0 
-
+endereco
     inc %rdi
     jmp parse_int_loop
 
