@@ -99,8 +99,7 @@ ifloat_pos:
     mulss %xmm2, %xmm0
     cvttss2si %xmm0, %eax
 
-    # Se a fração for menor que 10, multiplicá-la por 100 resulta em algo < 10 (ex: 5).
-    # Precisamos imprimir um '0' antes, para não sair "12.5" em vez de "12.05"
+    # imprime um '0' antes, para não sair "12.5" em vez de "12.05"
     cmp $10, %eax
     jge ifloat_frac_print
     
@@ -165,7 +164,6 @@ uint_done:
     ret
 
 # Funcoes
-
 soma:
     push %rbp
     mov %rsp, %rbp
@@ -201,8 +199,8 @@ divisao:
     push %rbp
     mov %rsp, %rbp
     
-    movss num1(%rip), %xmm0
-    movss num2(%rip), %xmm1
+    movss num1, %xmm0
+    movss num2, %xmm1
     
     xorps %xmm2, %xmm2
     ucomiss %xmm2, %xmm1
@@ -213,7 +211,7 @@ divisao:
     jmp fim_div
 
 erro_divisao:
-    lea msg_erro_zero(%rip), %rdi
+    mov $msg_erro_zero, %rdi
     call sys_print          
     mov $0, %eax             
 
@@ -222,34 +220,50 @@ fim_div:
     ret
 
 exponenciacao:
-	push %rbp
-	mov %rsp, %rbp
+    push %rbp
+    mov %rsp, %rbp
 
-	movss num1, %xmm0 # acumulador
-	movss num1, %xmm1 # base
-	movss num2, %xmm2 # expoente
-	cvttss2si %xmm2, %ecx # converte expoente para inteiro
-	cmp $0, %ecx
-	je exp_caso_zero
+    movss num1, %xmm1 # base
+    movss num2, %xmm2 # expoente (float)
+    cvttss2si %xmm2, %ecx # converte expoente pra inteiro
 
-	
-	cmp $1, %ecx
-	je fim_exp
+    xor %ebx, %ebx               
+    cmp $0, %ecx
+    je exp_caso_zero
+
+    test %ecx, %ecx
+    jns exp_positivo # se ecx >= 0, pula a negação
+    neg %ecx                  
+    mov $1, %ebx # marca que era negativo
+
+exp_positivo:
+    movss num1, %xmm0 # acumulador = base
+    cmp $1, %ecx
+    je exp_verifica_sinal       
 
 exp_loop:
-	mulss %xmm1, %xmm0
-	sub $1, %ecx
-	cmp $1, %ecx
-	jg exp_loop
-	jmp fim_exp
+    mulss %xmm1, %xmm0
+    sub $1, %ecx
+    cmp $1, %ecx
+    jg exp_loop
+
+exp_verifica_sinal:
+    test %ebx, %ebx
+    jz fim_exp # não era negativo, retorna direto
+
+    movss float_um, %xmm3         
+    divss %xmm0, %xmm3 # xmm3 = 1.0 / resultado
+    movaps %xmm3, %xmm0 # devolve o inverso
+
+    jmp fim_exp
 
 exp_caso_zero:
-	movss float_um, %xmm0
+    movss float_um, %xmm0
+    jmp fim_exp
 
 fim_exp:
-	; mov temp, %eax
-	pop %rbp
-	ret
+    pop %rbp
+    ret
 
 
 combinacao:
@@ -259,11 +273,11 @@ combinacao:
     push %r13
     
     call arranjo_calc 
-    mov %eax, %r12d           # joga o calculo do arranjo em r12d
+    mov %eax, %r12d # joga o calculo do arranjo em r12d
     
     #  Calcula fatorial
-    movss num2(%rip), %xmm0   # Carrega o float num2
-    cvttss2si %xmm0, %edi     # Converte para int
+    movss num2, %xmm0 # Carrega o float num2
+    cvttss2si %xmm0, %edi # Converte para int
     call fatorial 
     mov %eax, %ecx
     
@@ -293,22 +307,22 @@ arranjo:
 
 arranjo_calc:
     #  calcula fatoria(num1)
-    movss num1(%rip), %xmm0   # Carrega o float
+    movss num1, %xmm0   
     cvttss2si %xmm0, %edi     # Converte para int e joga no %edi
     call fatorial
-    mov %eax, temp(%rip)      # Salva na temp
+    mov %eax, temp   
     
     # calcula fatorial(num1 - num2)
-    movss num1(%rip), %xmm0   
-    movss num2(%rip), %xmm1
-    subss %xmm1, %xmm0        # Subtrai os floats primeiro (xmm0 = num1 - num2)
-    cvttss2si %xmm0, %edi     # Converte a diferenca para int e joga no %edi
+    movss num1, %xmm0   
+    movss num2, %xmm1
+    subss %xmm1, %xmm0       
+    cvttss2si %xmm0, %edi     
     
     call fatorial
     
     # divisao do arranjo (temp / fatorial(num1-num2))
     mov %eax, %ebx 
-    mov temp(%rip), %eax
+    mov temp, %eax
     xor %edx, %edx
     idivl %ebx
     ret
@@ -334,7 +348,6 @@ fim_fat_calc:
 inverso:
 	push %rbp
 	mov %rsp, %rbp
-	# bloco de codigo
 	movss float_um, %xmm0
 	divss num1, %xmm0
 	
@@ -346,12 +359,10 @@ raiz:
     mov %rsp, %rbp
 
     movss num1, %xmm0 
-    sqrtss   %xmm0, %xmm0 # faz a operacao
+    sqrtss %xmm0, %xmm0 # faz a operacao
 
     pop %rbp
     ret
-
-
 # primo
 eh_primo:
 	push %rbp
@@ -424,7 +435,6 @@ logaritmo: # recebe logaritmando em xmm0 e base em xmm1
 	fyl2x
 
 	# mudanca de base
-
 	fdivrp
 
 	fstps (%rsp)

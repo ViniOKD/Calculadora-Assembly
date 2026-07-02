@@ -1,5 +1,4 @@
 .global _start
-.global main
 .extern soma
 .extern soma_int
 .extern subtracao
@@ -787,11 +786,11 @@ valida_base_log:
     mov %rsp, %rbp
     xorps %xmm2, %xmm2
 
-    ucomiss %xmm2, %xmm0
+    ucomiss %xmm2, %xmm1
     jbe base_invalida
 
     movss float_um, %xmm2
-    ucomiss %xmm2, %xmm0
+    ucomiss %xmm2, %xmm1
     je base_invalida
 
     mov $1, %edx

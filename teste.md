@@ -6,7 +6,7 @@
 **Callers**
 **Parser**(parse_operando, po_numero, parse_numero, parse_int_loop, parse_real, parse_real_loop, parse_fim, parse_ret)
 **sys_read_line**(sys_readline, rl_loop, rl_fim,)
-## Parser
+## Parser LEMBRAR QUE MUDEI UM REGISTRADOR CL PARA ECX PARA TESTAR
 No inicio, o endereço do buffer está no rdi
 
 **Quando a entrada é uma variavel** -> nao tem frame de ativação | sera q tem q ter
@@ -29,6 +29,32 @@ Registradores gerais:
 - rdi -> ponteiro
 - ecx -> valor do caracter
 - ebx -> marcador de sinal (0 se o numero for positivo, 1 se o numero for negativo)
+- xmm1 -> tem o valor temporario da constante, antes de converter e jogar de volta pro ac xmm0
+- xmm2 -> outro reg temporario
+
+## Readline
+Regs Empilhados:
+- rbp -> ativa frame
+- rbx -> callee-saved, guarda o endereco base do buffer de input, onde a linha vai ser armazenada
+- r15 -> callee-saved, contador de quantos caracteres ja foram lidos, comeca em 0
+
+Regs:
+- rax -> qtd de bytes lidos
+- rsi -> aponta pra prox posicao livre
+
+## Avalia funcao
+**regs callee:**
+- rbp -> padrao
+- r13 -> Armazena o Operador (+,-,*, ....)
+- r14 ->
+- r15
+
+**regs**:
+- rdi -> ponteiro
+- eax -> letra da funcao
+- rsi -> tem o vetor_variaveis
+- 
+
 
 
 

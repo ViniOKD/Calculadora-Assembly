@@ -25,6 +25,7 @@
 	msg0: .asciz "Digite o primeiro numero: \n"
 	msg1: .asciz "Digite o segundo numero: \n"
 	msg2: .asciz "Digite a operação: \n"
+    msg_inv_op: .asciz "Operacao desconhecida.\n"
     msg_erro_zero: .asciz "Erro: O Operando não pode ser igual a zero.\n"
     msg_erro_nao_positivo: .asciz "Erro: O Operando deve ser um número positivo.\n"
     msg_erro_nao_inteiro_negativo: .asciz "Erro: O Operando deve ser um número inteiro não-negativo.\n"
@@ -118,8 +119,10 @@ loop_main:
     cmp $'l', %r12b
 	je logaritmo_caller
 
-    
-    
+op_invalida:
+    mov $msg_inv_op, %rdi
+    call printf
+    jmp loop_prog
 
 loop_prog:
 	mov $msg_continue, %rdi
@@ -160,6 +163,13 @@ multiplicacao_caller:
 
 divisao_caller:
     call divisao
+    
+    # Verifica o codigo de status que voltou no %eax
+    test %eax, %eax       
+    jz loop_prog          # Se for 0 (jz = Jump if Zero), pula a impressao e volta pro loop
+    
+    # Se nao for zero, a divisao deu certo, entao imprime o float
+    call imprime_float    
     jmp loop_prog
 
 exponenciacao_caller:
@@ -260,13 +270,11 @@ logaritmo_caller:
     test %edx, %edx
     jz erro_igual_zero # caso seja igual a zero, vai para erro
 
-
+    movss num2, %xmm1
     call valida_base_log
     test %edx, %edx
     jz erro_base_log # caso não seja válido, vai para erro
 
-    movss num1, %xmm0
-    movss num2, %xmm1
     call logaritmo
     call imprime_float
     jmp loop_prog
@@ -320,11 +328,11 @@ valida_base_log:
     mov %rsp, %rbp
     xorps %xmm2, %xmm2
 
-    ucomiss %xmm2, %xmm0
+    ucomiss %xmm2, %xmm1
     jbe base_invalida
 
     movss float_um, %xmm2
-    ucomiss %xmm2, %xmm0
+    ucomiss %xmm2, %xmm1
     je base_invalida
 
     mov $1, %edx
